@@ -1,0 +1,867 @@
+version: 3
+domain: "SQL for PostgreSQL"
+created_by: "Krishnendu Roy"
+taxonomy: 
+  category: "knowledge"
+  sub_category: "text_to_sql"
+  topic: "schema_aware_queries"
+seed_examples:
+  - context: |
+      {
+        "database_name":"faculty_management_db",
+        "schemas":[
+          {
+            "schema_name":"FACULTY_MANAGEMENT",
+            "tables":[
+              {
+                "table_name":"EMPLOYEE",
+                "columns":[
+                  {"column_name":"Ssn","data_type":"CHAR(9)","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Fname","data_type":"VARCHAR(30)"},
+                  {"column_name":"Lname","data_type":"VARCHAR(30)"},
+                  {"column_name":"Supervisor","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Supervisor) REFERENCES EMPLOYEE(Ssn)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Ssn)","FOREIGN KEY (Supervisor) REFERENCES EMPLOYEE(Ssn)"]
+              },
+              {
+                "table_name":"DEPENDENT",
+                "columns":[
+                  {"column_name":"Name","data_type":"VARCHAR(30)","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Relationship","data_type":"VARCHAR(20)"}
+                ],
+                "table_constraints":["PRIMARY KEY (Name, Employee_Ssn)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]
+              },
+              {
+                "table_name":"SUPERVISION",
+                "columns":[
+                  {"column_name":"Supervisor","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Supervisor) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Supervisee","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Supervisee) REFERENCES EMPLOYEE(Ssn)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Supervisor, Supervisee)","FOREIGN KEY (Supervisor) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Supervisee) REFERENCES EMPLOYEE(Ssn)"]
+              },
+              {
+                "table_name":"WORKS_ON",
+                "columns":[
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Project_Number","data_type":"INT","constraints":["FOREIGN KEY (Project_Number) REFERENCES PROJECT(Number)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Employee_Ssn, Project_Number)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Project_Number) REFERENCES PROJECT(Number)"]
+              },
+              {
+                "table_name":"WORKS_FOR",
+                "columns":[
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Department_Number","data_type":"INT","constraints":["FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Employee_Ssn, Department_Number)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]
+              },
+              {
+                "table_name":"DEPARTMENT",
+                "columns":[
+                  {"column_name":"Number","data_type":"INT","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Name","data_type":"VARCHAR(30)"}
+                ],
+                "table_constraints":["PRIMARY KEY (Number)"]
+              }
+            ]
+          }
+        ]
+      }
+    questions_and_answers:
+      - question: |
+          Retrieve the first and last names of all employees.
+        answer: |
+          {
+            "code": "SELECT Fname, Lname FROM FACULTY_MANAGEMENT.EMPLOYEE;",
+            "explanation": "Retrieves the first and last names of all employees from the EMPLOYEE table."
+          }
+      - question: |
+          List the names of employees who have at least one dependent.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e WHERE EXISTS ( SELECT 1 FROM FACULTY_MANAGEMENT.DEPENDENT d WHERE d.Employee_Ssn = e.Ssn );",
+            "explanation": "Lists names of employees who have at least one dependent by checking for related entries in DEPENDENT."
+          }
+      - question: |
+          Retrieve the names of employees who have both a son and a daughter as dependents.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e WHERE e.Ssn IN ( SELECT d.Employee_Ssn  FROM FACULTY_MANAGEMENT.DEPENDENT d  WHERE d.Relationship = 'Son') AND e.Ssn IN ( SELECT d.Employee_Ssn  FROM FACULTY_MANAGEMENT.DEPENDENT d  WHERE d.Relationship = 'Daughter');",
+            "explanation": "Retrieves employees who have both a son and a daughter as dependents by checking relationships in DEPENDENT."
+          }
+      - question: |
+          Find the names of employees who do not supervise anyone but have at least one dependent.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e WHERE NOT EXISTS ( SELECT 1 FROM FACULTY_MANAGEMENT.SUPERVISION s WHERE s.Supervisor = e.Ssn) AND EXISTS ( SELECT 1 FROM FACULTY_MANAGEMENT.DEPENDENT d WHERE d.Employee_Ssn = e.Ssn);",
+            "explanation": "Finds employees who do not supervise anyone but have at least one dependent by checking SUPERVISION and DEPENDENT."
+          }
+      - question: |
+          List the names of employees who are both supervisors and supervisees.
+        answer: |
+          {
+            "code": "SELECT DISTINCT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.SUPERVISION s1 ON e.Ssn = s1.Supervisor JOIN FACULTY_MANAGEMENT.SUPERVISION s2 ON e.Ssn = s2.Supervisee;",
+            "explanation": "Lists employees who are both supervisors and supervisees by finding those appearing as both in SUPERVISION."
+          }
+      - question: |
+          Get the social security numbers (Ssn) of all employees who are supervisors.
+        answer: |
+          {
+            "code": "SELECT DISTINCT Supervisor FROM FACULTY_MANAGEMENT.SUPERVISION;",
+            "explanation": "Retrieves the social security numbers of all employees who are supervisors from the SUPERVISION table."
+          }
+      - question: |
+          Retrieve the names of supervisors who supervise more than two employees.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.SUPERVISION s ON e.Ssn = s.Supervisor\nGROUP BY e.Ssn, e.Fname, e.Lname HAVING COUNT(s.Supervisee) > 2;",
+            "explanation": "Retrieves names of supervisors who supervise more than two employees by grouping supervisors and counting supervisees in SUPERVISION."
+          }
+      - question: |
+          Identify employees who supervise themselves indirectly (i.e., a supervision loop).
+        answer: |
+          {
+            "code": "WITH RECURSIVE SupervisionChain(Supervisor, Supervisee) AS ( SELECT Supervisor, Supervisee FROM FACULTY_MANAGEMENT.SUPERVISION UNION  SELECT sc.Supervisor, s.Supervisee FROM SupervisionChain sc JOIN FACULTY_MANAGEMENT.SUPERVISION s ON sc.Supervisee = s.Supervisor) SELECT DISTINCT e.Fname, e.Lname FROM SupervisionChain sc JOIN FACULTY_MANAGEMENT.EMPLOYEE e ON sc.Supervisor = e.Ssn WHERE sc.Supervisor = sc.Supervisee;",
+            "explanation": "Identifies employees who supervise themselves indirectly by recursively building supervision chains and selecting where supervisor equals supervisee."
+          }
+      - question: |
+          Find the names of employees who are supervisors of supervisors, but themselves do not have a supervisor.
+        answer: |
+          {
+            "code": "SELECT DISTINCT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.SUPERVISION s1 ON e.Ssn = s1.Supervisor JOIN FACULTY_MANAGEMENT.SUPERVISION s2 ON s1.Supervisee = s2.Supervisor WHERE e.Supervisor IS NULL;",
+            "explanation": "Finds employees who supervise supervisors but do not have a supervisor themselves by joining SUPERVISION and checking Supervisor is NULL."
+          }
+      - question: |
+          List the names of employees who do not have any dependents and whose supervisors also do not have any dependents.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e LEFT JOIN FACULTY_MANAGEMENT.DEPENDENT d ON e.Ssn = d.Employee_Ssn LEFT JOIN FACULTY_MANAGEMENT.DEPENDENT sd ON e.Supervisor = sd.Employee_Ssn WHERE d.Name IS NULL AND sd.Name IS NULL;",
+            "explanation": "Lists employees who have no dependents and whose supervisors also have no dependents by checking for absence in DEPENDENT."
+          }
+      - question: |
+          Find the names of employees who do not work on any project but have dependents.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e WHERE EXISTS ( SELECT 1 FROM FACULTY_MANAGEMENT.DEPENDENT d  WHERE d.Employee_Ssn = e.Ssn) AND NOT EXISTS ( SELECT 1 FROM FACULTY_MANAGEMENT.WORKS_ON w WHERE w.Employee_Ssn = e.Ssn);",
+            "explanation": "Finds employees who have dependents but do not work on any project by checking for absence in WORKS_ON and presence in DEPENDENT."
+          }
+      - question: |
+          Retrieve the names of employees who have never worked on a project with any of their supervisors or supervisees.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e WHERE NOT EXISTS ( SELECT 1 FROM FACULTY_MANAGEMENT.WORKS_ON w1  JOIN FACULTY_MANAGEMENT.SUPERVISION s ON e.Ssn = s.Supervisor OR e.Ssn = s.Supervisee WHERE w1.Employee_Ssn = s.Supervisee OR w1.Employee_Ssn = s.Supervisor AND w1.Employee_Ssn = e.Ssn);",
+            "explanation": "Retrieves employees who have never worked on a project with any of their supervisors or supervisees by checking for such overlaps."
+          }
+      - question: |
+          List the names of employees who supervise someone who supervises someone else (i.e., supervisors of supervisors).
+        answer: |
+          {
+            "code": "SELECT DISTINCT e1.Fname, e1.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e1 JOIN FACULTY_MANAGEMENT.SUPERVISION s1 ON e1.Ssn = s1.Supervisor JOIN FACULTY_MANAGEMENT.SUPERVISION s2 ON s1.Supervisee = s2.Supervisor;",
+            "explanation": "Lists employees who supervise someone who supervises others by joining SUPERVISION twice."
+          }
+
+  - context: |
+      {
+        "database_name":"faculty_management_db",
+        "schemas":[
+          {
+            "schema_name":"FACULTY_MANAGEMENT",
+            "tables":[
+              {
+                "table_name":"EMPLOYEE",
+                "columns":[
+                  {"column_name":"Ssn","data_type":"CHAR(9)","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Fname","data_type":"VARCHAR(30)"},
+                  {"column_name":"Lname","data_type":"VARCHAR(30)"}
+                ],
+                "table_constraints":["PRIMARY KEY (Ssn)"]
+              },
+              {
+                "table_name":"PROJECT",
+                "columns":[
+                  {"column_name":"Number","data_type":"INT","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Name","data_type":"VARCHAR(30)"},
+                  {"column_name":"Location","data_type":"VARCHAR(50)"}
+                ],
+                "table_constraints":["PRIMARY KEY (Number)"]
+              },
+              {
+                "table_name":"WORKS_ON",
+                "columns":[
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Project_Number","data_type":"INT","constraints":["FOREIGN KEY (Project_Number) REFERENCES PROJECT(Number)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Employee_Ssn, Project_Number)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Project_Number) REFERENCES PROJECT(Number)"]
+              },
+              {
+                "table_name":"CONTROLS",
+                "columns":[
+                  {"column_name":"Department_Number","data_type":"INT","constraints":["FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]},
+                  {"column_name":"Project_Number","data_type":"INT","constraints":["FOREIGN KEY (Project_Number) REFERENCES PROJECT(Number)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Department_Number, Project_Number)","FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)","FOREIGN KEY (Project_Number) REFERENCES PROJECT(Number)"]
+              },
+              {
+                "table_name":"WORKS_FOR",
+                "columns":[
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Department_Number","data_type":"INT","constraints":["FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Employee_Ssn, Department_Number)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]
+              },
+              {
+                "table_name":"DEPARTMENT",
+                "columns":[
+                  {"column_name":"Number","data_type":"INT","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Name","data_type":"VARCHAR(30)"}
+                ],
+                "table_constraints":["PRIMARY KEY (Number)"]
+              }
+            ]
+          }
+        ]
+      }
+
+    questions_and_answers:
+      - question: |
+          Find the names of all projects located in 'New York'.
+        answer: |
+          {
+            "code": "SELECT Name FROM FACULTY_MANAGEMENT.PROJECT WHERE Location = 'New York';",
+            "explanation": "Finds the names of all projects located in 'New York' from the PROJECT table."
+          }
+      - question: |
+          Retrieve the names of employees who work on all projects.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e WHERE NOT EXISTS (  SELECT p.Number FROM FACULTY_MANAGEMENT.PROJECT p  EXCEPT  SELECT w.Project_Number FROM FACULTY_MANAGEMENT.WORKS_ON w WHERE w.Employee_Ssn = e.Ssn);",
+            "explanation": "Retrieves employees who work on all projects by checking that there are no projects they do not work on."
+          }
+      - question: |
+          Find employees who are not assigned to any department but work on projects.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e WHERE NOT EXISTS ( SELECT 1 FROM FACULTY_MANAGEMENT.WORKS_FOR wf WHERE e.Ssn = wf.Employee_Ssn ) AND EXISTS (  SELECT 1 FROM FACULTY_MANAGEMENT.WORKS_ON w WHERE e.Ssn = w.Employee_Ssn);",
+            "explanation": "Finds employees not assigned to any department but work on projects by checking absence in WORKS_FOR and presence in WORKS_ON."
+          }
+      - question: |
+          Retrieve the names of employees who work on all projects controlled by the 'Research' department.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e\nWHERE NOT EXISTS ( SELECT c.Project_Number FROM FACULTY_MANAGEMENT.CONTROLS c JOIN FACULTY_MANAGEMENT.DEPARTMENT d ON c.Department_Number = d.Number  WHERE d.Name = 'Research' EXCEPT   SELECT w.Project_Number  FROM FACULTY_MANAGEMENT.WORKS_ON w  WHERE w.Employee_Ssn = e.Ssn);",
+            "explanation": "Retrieves employees who work on all projects controlled by the 'Research' department by ensuring no such project is missed."
+          }
+      - question: |
+          Find the names of employees who work on projects controlled by every department they work for.
+        answer: |
+          {
+            "code": "SELECT DISTINCT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e WHERE NOT EXISTS ( SELECT wf.Department_Number FROM FACULTY_MANAGEMENT.WORKS_FOR wf WHERE wf.Employee_Ssn = e.Ssn EXCEPT SELECT c.Department_Number FROM FACULTY_MANAGEMENT.WORKS_ON w JOIN FACULTY_MANAGEMENT.CONTROLS c ON w.Project_Number = c.Project_Number\n    WHERE w.Employee_Ssn = e.Ssn);",
+            "explanation": "Finds employees who work on projects controlled by every department they work for by ensuring all their departments control their projects."
+          }
+      - question: |
+          List the names of employees who do not work for the department that controls the projects they work on.
+        answer: |
+          {
+            "code": "SELECT DISTINCT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.WORKS_ON w ON e.Ssn = w.Employee_Ssn JOIN FACULTY_MANAGEMENT.CONTROLS c ON w.Project_Number = c.Project_Number JOIN FACULTY_MANAGEMENT.WORKS_FOR wf ON e.Ssn = wf.Employee_Ssn WHERE c.Department_Number <> wf.Department_Number;",
+            "explanation": "Lists employees who do not work for the department that controls the projects they work on by comparing department numbers."
+          }
+      - question: |
+          Find the names of employees who work on at least one project controlled by every department in the company.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e\nWHERE NOT EXISTS ( SELECT d.Number  FROM FACULTY_MANAGEMENT.DEPARTMENT d EXCEPT SELECT c.Department_Number  FROM FACULTY_MANAGEMENT.WORKS_ON w JOIN FACULTY_MANAGEMENT.CONTROLS c ON w.Project_Number = c.Project_Number  WHERE w.Employee_Ssn = e.Ssn);",
+            "explanation": "Finds employees who work on at least one project controlled by every department by checking if there are any departments whose projects they haven't worked on."
+          }
+      - question: |
+          Retrieve the names of employees who work on projects controlled by departments they do not work for.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e WHERE EXISTS (SELECT *   FROM FACULTY_MANAGEMENT.WORKS_ON w  JOIN FACULTY_MANAGEMENT.CONTROLS c ON w.Project_Number = c.Project_Number  JOIN FACULTY_MANAGEMENT.WORKS_FOR wf ON wf.Employee_Ssn = e.Ssn  WHERE w.Employee_Ssn = e.Ssn AND wf.Department_Number <> c.Department_Number);",
+            "explanation": "This query retrieves the names of employees who are working on projects that are controlled by departments different from the ones they are officially assigned to (work for). It joins the WORKS_ON, CONTROLS, and WORKS_FOR tables to identify discrepancies between the project-controlling department and the employee's department."
+          }
+      - question: |
+          Retrieve the names of employees who are involved in projects that no one else is working on in any other department.
+        answer: |
+          {
+            "code": "SELECT DISTINCT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.WORKS_FOR wf ON e.Ssn = wf.Employee_Ssn JOIN FACULTY_MANAGEMENT.WORKS_ON w1 ON e.Ssn = w1.Employee_Ssn WHERE NOT EXISTS ( SELECT 1  FROM FACULTY_MANAGEMENT.WORKS_ON w2 JOIN FACULTY_MANAGEMENT.WORKS_FOR wf2 ON w2.Employee_Ssn = wf2.Employee_Ssn  WHERE w2.Project_Number = w1.Project_Number AND wf2.Department_Number <> wf.Department_Number AND w2.Employee_Ssn <> e.Ssn);",
+            "explanation": "Finds employees working on projects that no one else in other departments works on by ensuring no such employees exist."
+          }
+
+  - context: |
+      {
+        "database_name":"faculty_management_db",
+        "schemas":[
+          {
+            "schema_name":"FACULTY_MANAGEMENT",
+            "tables":[
+              {
+                "table_name":"EMPLOYEE",
+                "columns":[
+                  {"column_name":"Ssn","data_type":"CHAR(9)","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Fname","data_type":"VARCHAR(30)"},
+                  {"column_name":"Lname","data_type":"VARCHAR(30)"},
+                  {"column_name":"Salary","data_type":"NUMERIC(10, 2)"},
+                  {"column_name":"Supervisor","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Supervisor) REFERENCES EMPLOYEE(Ssn)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Ssn)","FOREIGN KEY (Supervisor) REFERENCES EMPLOYEE(Ssn)"]
+              },
+              {
+                "table_name":"SUPERVISION",
+                "columns":[
+                  {"column_name":"Supervisor","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Supervisor) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Supervisee","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Supervisee) REFERENCES EMPLOYEE(Ssn)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Supervisor, Supervisee)","FOREIGN KEY (Supervisor) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Supervisee) REFERENCES EMPLOYEE(Ssn)"]
+              },
+              {
+                "table_name":"MANAGES",
+                "columns":[
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Department_Number","data_type":"INT","constraints":["FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Employee_Ssn, Department_Number)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]
+              },
+              {
+                "table_name":"DEPARTMENT",
+                "columns":[
+                  {"column_name":"Number","data_type":"INT","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Name","data_type":"VARCHAR(30)"}
+                ],
+                "table_constraints":["PRIMARY KEY (Number)"]
+              }
+            ]
+          }
+        ]
+      }
+    questions_and_answers:
+      - question: |
+          Find the employee with the highest salary.
+        answer: |
+          {
+            "code": "SELECT Fname, Lname, Salary FROM FACULTY_MANAGEMENT.EMPLOYEE WHERE Salary = (SELECT MAX(Salary) FROM FACULTY_MANAGEMENT.EMPLOYEE);",
+            "explanation": "Finds the employee(s) with the highest salary by comparing salaries to the maximum salary in the EMPLOYEE table."
+          }
+      - question: |
+          Retrieve the names of employees whose salary is above the average salary.
+        answer: |
+          {
+            "code": "SELECT Fname, Lname, Salary FROM FACULTY_MANAGEMENT.EMPLOYEE WHERE Salary > (SELECT AVG(Salary) FROM FACULTY_MANAGEMENT.EMPLOYEE);",
+            "explanation": "Retrieves employees whose salary is above the average salary by comparing it to the average in the EMPLOYEE table."
+          }
+      - question: |
+          Retrieve the names of employees who earn more than the average salary of their department.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.WORKS_FOR wf ON e.Ssn = wf.Employee_Ssn JOIN (  SELECT wf.Department_Number, AVG(e.Salary) AS AvgSalary  FROM FACULTY_MANAGEMENT.WORKS_FOR wf JOIN FACULTY_MANAGEMENT.EMPLOYEE e ON wf.Employee_Ssn = e.Ssn GROUP BY wf.Department_Number) AS dept_avg ON wf.Department_Number = dept_avg.Department_Number WHERE e.Salary > dept_avg.AvgSalary;",
+            "explanation": "Retrieves employees who earn more than the average salary of their department by comparing salaries within joined tables."
+          }
+      - question: |
+          Calculate the average salary of employees in each department.
+        answer: |
+          {
+            "code": "SELECT d.Name AS Department, AVG(e.Salary) AS AverageSalary FROM FACULTY_MANAGEMENT.DEPARTMENT d JOIN FACULTY_MANAGEMENT.WORKS_FOR wf ON d.Number = wf.Department_Number JOIN FACULTY_MANAGEMENT.EMPLOYEE e ON wf.Employee_Ssn = e.Ssn GROUP BY d.Number, d.Name;",
+            "explanation": "Calculates the average salary of employees in each department by joining DEPARTMENT, WORKS_FOR, and EMPLOYEE tables and grouping by department."
+          }
+      - question: |
+          Find the names of employees whose salary is higher than their supervisor's salary.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.EMPLOYEE s ON e.Supervisor = s.Ssn WHERE e.Salary > s.Salary;",
+            "explanation": "Finds employees whose salary is higher than their supervisor's salary by comparing salaries in EMPLOYEE table."
+          }
+      - question: |
+          List the names of employees who earn more than the average salary of all employees in the company but work for departments where the average salary is less than the company's average.
+        answer: |
+          {
+            "code": "WITH CompanyAvg AS (  SELECT AVG(Salary) AS CompanyAvgSalary FROM FACULTY_MANAGEMENT.EMPLOYEE), DeptAvg AS ( SELECT wf.Department_Number, AVG(e.Salary) AS DeptAvgSalary  FROM FACULTY_MANAGEMENT.WORKS_FOR wf   JOIN FACULTY_MANAGEMENT.EMPLOYEE e ON wf.Employee_Ssn = e.Ssn GROUP BY wf.Department_Number) SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.WORKS_FOR wf ON e.Ssn = wf.Employee_Ssn JOIN DeptAvg da ON wf.Department_Number = da.Department_Number JOIN CompanyAvg ca ON 1=1 WHERE e.Salary > ca.CompanyAvgSalary AND da.DeptAvgSalary < ca.CompanyAvgSalary;",
+            "explanation": "Lists employees earning above company average but working in departments where the average salary is below company average."
+          }
+      - question: |
+          List the names of employees who have no supervisor but manage a department.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.MANAGES m ON e.Ssn = m.Employee_Ssn WHERE e.Supervisor IS NULL;",
+            "explanation": "Lists employees who have no supervisor but manage a department by checking Supervisor is NULL and joining MANAGES."
+          }
+      - question: |
+          List the names of all departments managed by 'Bob Smith'.
+        answer: |
+          {
+            "code": "SELECT d.Name FROM FACULTY_MANAGEMENT.MANAGES m JOIN FACULTY_MANAGEMENT.EMPLOYEE e ON m.Employee_Ssn = e.Ssn JOIN FACULTY_MANAGEMENT.DEPARTMENT d ON m.Department_Number = d.Number WHERE e.Fname = 'Bob' AND e.Lname = 'Smith';",
+            "explanation": "Lists the names of all departments managed by 'Bob Smith' by joining MANAGES, EMPLOYEE, and DEPARTMENT tables."
+          }
+      - question: |
+          Retrieve the names of employees who work for the same department as 'Emily Davis'.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.WORKS_FOR wf1 ON e.Ssn = wf1.Employee_Ssn WHERE wf1.Department_Number = (  SELECT wf2.Department_Number  FROM FACULTY_MANAGEMENT.EMPLOYEE e2  JOIN FACULTY_MANAGEMENT.WORKS_FOR wf2 ON e2.Ssn = wf2.Employee_Ssn   WHERE e2.Fname = 'Emily' AND e2.Lname = 'Davis');",
+            "explanation": "Retrieves employees who work for the same department as 'Emily Davis' by matching department numbers in WORKS_FOR."
+          }
+      - question: |
+          Find the department(s) with the highest number of employees.
+        answer: |
+          {
+            "code": "WITH DeptEmployeeCounts AS (  SELECT wf.Department_Number, COUNT(*) AS EmployeeCount  FROM FACULTY_MANAGEMENT.WORKS_FOR wf    GROUP BY wf.Department_Number), MaxCount AS (  SELECT MAX(EmployeeCount) AS MaxEmployeeCount FROM DeptEmployeeCounts) SELECT d.Name FROM DeptEmployeeCounts dec JOIN MaxCount mc ON dec.EmployeeCount = mc.MaxEmployeeCount JOIN FACULTY_MANAGEMENT.DEPARTMENT d ON dec.Department_Number = d.Number;",
+            "explanation": "Finds departments with the highest number of employees by counting employees per department and selecting those with the maximum count."
+          }
+      - question: |
+          Retrieve the names of employees who have worked on more projects than any of their supervisors.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN ( SELECT e.Ssn, COUNT(DISTINCT w.Project_Number) AS ProjectCount  FROM FACULTY_MANAGEMENT.EMPLOYEE e LEFT JOIN FACULTY_MANAGEMENT.WORKS_ON w ON e.Ssn = w.Employee_Ssn   GROUP BY e.Ssn) AS emp_proj ON e.Ssn = emp_proj.Ssn JOIN FACULTY_MANAGEMENT.EMPLOYEE s ON e.Supervisor = s.Ssn JOIN ( SELECT s.Ssn, COUNT(DISTINCT w.Project_Number) AS SupervisorProjectCount  FROM FACULTY_MANAGEMENT.EMPLOYEE s LEFT JOIN FACULTY_MANAGEMENT.WORKS_ON w ON s.Ssn = w.Employee_Ssn  GROUP BY s.Ssn) AS sup_proj ON s.Ssn = sup_proj.Ssn WHERE emp_proj.ProjectCount > sup_proj.SupervisorProjectCount;",
+            "explanation": "Retrieves employees who have worked on more projects than their supervisors by comparing project counts."
+          }
+      - question: |
+          Find employees who have the same supervisor as 'Henry Moore'.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e\nWHERE e.Supervisor = ( SELECT Supervisor FROM FACULTY_MANAGEMENT.EMPLOYEE WHERE Fname = 'Henry' AND Lname = 'Moore');",
+            "explanation": "Finds employees who have the same supervisor as 'Henry Moore' by comparing the Supervisor field in EMPLOYEE."
+          }
+      - question: |
+          Retrieve the names of employees who are supervised by 'Carol Williams'.
+        answer: |
+          {
+            "code": "SELECT e2.Fname, e2.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e1 JOIN FACULTY_MANAGEMENT.SUPERVISION s ON e1.Ssn = s.Supervisor JOIN FACULTY_MANAGEMENT.EMPLOYEE e2 ON s.Supervisee = e2.Ssn WHERE e1.Fname = 'Carol' AND e1.Lname = 'Williams';",
+            "explanation": "Retrieves employees supervised by 'Carol Williams' by joining EMPLOYEE and SUPERVISION tables."
+          }
+      - question: |
+          List the names of employees who have more than one supervisor (assuming the schema allows multiple supervisors).
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.SUPERVISION s ON e.Ssn = s.Supervisee GROUP BY e.Ssn, e.Fname, e.Lname HAVING COUNT(DISTINCT s.Supervisor) > 1;",
+            "explanation": "Lists employees who have more than one supervisor by grouping supervisees in SUPERVISION and counting distinct supervisors."
+          }
+      - question: |
+          Retrieve the names of employees who are at the bottom of the supervisory chain (i.e., they supervise no one), but indirectly report to 'Alice Johnson'.
+        answer: |
+          {
+            "code": "WITH RECURSIVE SupervisionChain(Supervisor, Supervisee) AS ( SELECT Supervisor, Supervisee FROM FACULTY_MANAGEMENT.SUPERVISION WHERE Supervisor = (SELECT Ssn FROM FACULTY_MANAGEMENT.EMPLOYEE WHERE Fname = 'Alice' AND Lname = 'Johnson') UNION SELECT sc.Supervisor, s.Supervisee FROM SupervisionChain sc JOIN FACULTY_MANAGEMENT.SUPERVISION s ON sc.Supervisee = s.Supervisor) SELECT e.Fname, e.Lname FROM SupervisionChain sc JOIN FACULTY_MANAGEMENT.EMPLOYEE e ON sc.Supervisee = e.Ssn WHERE NOT EXISTS ( SELECT 1 FROM FACULTY_MANAGEMENT.SUPERVISION s WHERE s.Supervisor = e.Ssn);",
+            "explanation": "Retrieves employees who supervise no one but indirectly report to 'Alice Johnson' by building supervision chains starting from her."
+          }
+      - question: |
+          List the names of employees who have supervised every employee who has supervised them (directly or indirectly).
+        answer: |
+          {
+            "code": "WITH RECURSIVE SupervisionChain AS ( SELECT Supervisor, Supervisee  FROM FACULTY_MANAGEMENT.SUPERVISION  UNION SELECT sc.Supervisor, s.Supervisee  FROM SupervisionChain sc  JOIN FACULTY_MANAGEMENT.SUPERVISION s ON sc.Supervisee = s.Supervisor) SELECT DISTINCT e1.Fname, e1.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e1 JOIN SupervisionChain sc1 ON e1.Ssn = sc1.Supervisor WHERE NOT EXISTS ( SELECT 1 FROM SupervisionChain sc2  WHERE sc2.Supervisee = e1.Ssn AND NOT EXISTS (  SELECT 1 FROM SupervisionChain sc3    WHERE sc3.Supervisor = sc2.Supervisor AND sc3.Supervisee = sc1.Supervisee  ));",
+            "explanation": "Lists employees who have supervised every employee who has supervised them by recursively building supervision chains and comparing."
+          }
+      - question: |
+          Retrieve the names of employees who do not have a supervisor.
+        answer: |
+          {
+            "code": "SELECT Fname, Lname FROM FACULTY_MANAGEMENT.EMPLOYEE WHERE Supervisor IS NULL;",
+            "explanation": "Retrieves the names of employees who do not have a supervisor from the EMPLOYEE table."
+          }
+
+  - context: |
+      {
+        "database_name":"faculty_management_db",
+        "schemas":[
+          {
+            "schema_name":"FACULTY_MANAGEMENT",
+            "tables":[
+              {
+                "table_name":"DEPARTMENT",
+                "columns":[
+                  {"column_name":"Number","data_type":"INT","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Name","data_type":"VARCHAR(30)"},
+                  {"column_name":"Locations","data_type":"VARCHAR(100)"}
+                ],
+                "table_constraints":["PRIMARY KEY (Number)"]
+              },
+              {
+                "table_name":"WORKS_FOR",
+                "columns":[
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Department_Number","data_type":"INT","constraints":["FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Employee_Ssn, Department_Number)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]
+              },
+              {
+                "table_name":"EMPLOYEE",
+                "columns":[
+                  {"column_name":"Ssn","data_type":"CHAR(9)","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Fname","data_type":"VARCHAR(30)"},
+                  {"column_name":"Lname","data_type":"VARCHAR(30)"},
+                  {"column_name":"Address","data_type":"VARCHAR(50)"},
+                  {"column_name":"Salary","data_type":"NUMERIC(10, 2)"}
+                ],
+                "table_constraints":["PRIMARY KEY (Ssn)"]
+              },
+              {
+                "table_name":"DEPENDENT",
+                "columns":[
+                  {"column_name":"Name","data_type":"VARCHAR(30)","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Name, Employee_Ssn)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]
+              },
+              {
+                "table_name":"MANAGES",
+                "columns":[
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Department_Number","data_type":"INT","constraints":["FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Employee_Ssn, Department_Number)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]
+              }
+            ]
+          }
+        ]
+      }
+    questions_and_answers:
+      - question: |
+          List the names and locations of all departments.
+        answer: |
+          {
+            "code": "SELECT Name, Locations FROM FACULTY_MANAGEMENT.DEPARTMENT;",
+            "explanation": "Lists the names and locations of all departments from the DEPARTMENT table."
+          }
+      - question: |
+          Count the total number of departments in the company.
+        answer: |
+          {
+            "code": "SELECT COUNT(*) AS TotalDepartments FROM FACULTY_MANAGEMENT.DEPARTMENT;",
+            "explanation": "Counts the total number of departments in the company from the DEPARTMENT table."
+          }
+      - question: |
+          Find all employees who work in the 'Research' department.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.WORKS_FOR wf ON e.Ssn = wf.Employee_Ssn JOIN FACULTY_MANAGEMENT.DEPARTMENT d ON wf.Department_Number = d.Number WHERE d.Name = 'Research';",
+            "explanation": "Finds all employees who work in the 'Research' department by joining EMPLOYEE, WORKS_FOR, and DEPARTMENT tables."
+          }
+      - question: |
+          List the departments where the average salary is greater than the average salary of the entire company.
+        answer: |
+          {
+            "code": "WITH CompanyAvg AS ( SELECT AVG(Salary) AS AvgSalary FROM FACULTY_MANAGEMENT.EMPLOYEE), DeptAvg AS (  SELECT wf.Department_Number, AVG(e.Salary) AS DeptAvgSalary FROM FACULTY_MANAGEMENT.WORKS_FOR wf  JOIN FACULTY_MANAGEMENT.EMPLOYEE e ON wf.Employee_Ssn = e.Ssn GROUP BY wf.Department_Number) SELECT d.Name FROM DeptAvg da JOIN CompanyAvg ca ON 1=1 JOIN FACULTY_MANAGEMENT.DEPARTMENT d ON da.Department_Number = d.Number WHERE da.DeptAvgSalary > ca.AvgSalary;",
+            "explanation": "Lists departments where average salary exceeds company average by comparing department averages to the overall average."
+          }
+      - question: |
+          Find the departments where the total salary of employees exceeds $500,000.
+        answer: |
+          {
+            "code": "SELECT d.Name AS Department FROM FACULTY_MANAGEMENT.DEPARTMENT d JOIN FACULTY_MANAGEMENT.WORKS_FOR wf ON d.Number = wf.Department_Number JOIN FACULTY_MANAGEMENT.EMPLOYEE e ON wf.Employee_Ssn = e.Ssn GROUP BY d.Number, d.Name HAVING SUM(e.Salary) > 500000;",
+            "explanation": "Finds departments where total salary exceeds $500,000 by summing salaries of employees in each department."
+          }
+      - question: |
+          List the names and addresses of employees who work for the 'Engineering' department and earn more than $80,000.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname, e.Address FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.WORKS_FOR wf ON e.Ssn = wf.Employee_Ssn JOIN FACULTY_MANAGEMENT.DEPARTMENT d ON wf.Department_Number = d.Number WHERE d.Name = 'Engineering' AND e.Salary > 80000;",
+            "explanation": "Lists names and addresses of employees in 'Engineering' department earning over $80,000 by joining relevant tables and applying conditions."
+          }
+      - question: |
+          Retrieve the names of employees who have a dependent that is also an employee and works in the same department.
+        answer: |
+          {
+            "code": "SELECT DISTINCT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.DEPENDENT d ON e.Ssn = d.Employee_Ssn JOIN FACULTY_MANAGEMENT.EMPLOYEE e2 ON d.Name = e2.Fname || ' ' || e2.Lname JOIN FACULTY_MANAGEMENT.WORKS_FOR wf1 ON e.Ssn = wf1.Employee_Ssn JOIN FACULTY_MANAGEMENT.WORKS_FOR wf2 ON e2.Ssn = wf2.Employee_Ssn WHERE wf1.Department_Number = wf2.Department_Number;",
+            "explanation": "Retrieves employees who have a dependent that is also an employee and works in the same department by checking employee and dependent data."
+          }
+      - question: |
+          Retrieve the names of employees who have at least one dependent and work on all projects that their dependents' other parent (assuming the other parent is also an employee) works on.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e WHERE EXISTS ( SELECT 1 FROM FACULTY_MANAGEMENT.DEPENDENT d  JOIN FACULTY_MANAGEMENT.EMPLOYEE e2 ON d.Name = e2.Fname || ' ' || e2.Lname  WHERE d.Employee_Ssn = e.Ssn ) AND NOT EXISTS (  SELECT w2.Project_Number  FROM FACULTY_MANAGEMENT.WORKS_ON w2 JOIN FACULTY_MANAGEMENT.DEPENDENT d ON d.Employee_Ssn = e.Ssn JOIN FACULTY_MANAGEMENT.EMPLOYEE e2 ON d.Name = e2.Fname || ' ' || e2.Lname  WHERE w2.Employee_Ssn = e2.Ssn EXCEPT SELECT w1.Project_Number  FROM FACULTY_MANAGEMENT.WORKS_ON w1  WHERE w1.Employee_Ssn = e.Ssn);",
+            "explanation": "Retrieves employees who have dependents that are employees and work on all projects their dependents work on."
+          }
+      - question: |
+          Retrieve the names of all dependents of 'Alice Johnson'.
+        answer: |
+          {
+            "code": "SELECT d.Name FROM FACULTY_MANAGEMENT.DEPENDENT d JOIN FACULTY_MANAGEMENT.EMPLOYEE e ON d.Employee_Ssn = e.Ssn WHERE e.Fname = 'Alice' AND e.Lname = 'Johnson';",
+            "explanation": "Retrieves the names of all dependents of 'Alice Johnson' by joining DEPENDENT and EMPLOYEE tables."
+          }
+      - question: |
+          Find the names of employees who have a dependent named 'Michael'.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.DEPENDENT d ON e.Ssn = d.Employee_Ssn WHERE d.Name = 'Michael';",
+            "explanation": "Finds employees who have a dependent named 'Michael' by joining EMPLOYEE and DEPENDENT tables and filtering dependents."
+          }
+      - question: |
+          Retrieve the names of employees who have the same set of dependents as 'Bob Smith'.
+        answer: |
+          {
+            "code": "WITH BobDependents AS ( SELECT d.Name  FROM FACULTY_MANAGEMENT.DEPENDENT d JOIN FACULTY_MANAGEMENT.EMPLOYEE e ON d.Employee_Ssn = e.Ssn WHERE e.Fname = 'Bob' AND e.Lname = 'Smith' ), EmployeeDependents AS ( SELECT e.Ssn, e.Fname, e.Lname, ARRAY_AGG(d.Name ORDER BY d.Name) AS Dependents FROM FACULTY_MANAGEMENT.EMPLOYEE e   LEFT JOIN FACULTY_MANAGEMENT.DEPENDENT d ON e.Ssn = d.Employee_Ssn  GROUP BY e.Ssn, e.Fname, e.Lname) SELECT ed.Fname, ed.Lname FROM EmployeeDependents ed WHERE ed.Dependents = (SELECT ARRAY_AGG(Name ORDER BY Name) FROM BobDependents) AND NOT (ed.Fname = 'Bob' AND ed.Lname = 'Smith');",
+            "explanation": "Retrieves employees who have the same set of dependents as 'Bob Smith' by comparing arrays of dependent names."
+          }
+      - question: |
+          Find the names of employees who have the highest total number of dependents among all employees.
+        answer: |
+          {
+            "code": "WITH DependentCounts AS ( SELECT e.Ssn, e.Fname, e.Lname, COUNT(d.Name) AS DependentCount  FROM FACULTY_MANAGEMENT.EMPLOYEE e   LEFT JOIN FACULTY_MANAGEMENT.DEPENDENT d ON e.Ssn = d.Employee_Ssn   GROUP BY e.Ssn, e.Fname, e.Lname), MaxDependentCount AS ( SELECT MAX(DependentCount) AS MaxCount FROM DependentCounts ) SELECT dc.Fname, dc.Lname FROM DependentCounts dc, MaxDependentCount mdc WHERE dc.DependentCount = mdc.MaxCount;",
+            "explanation": "Finds employees with the highest number of dependents by counting dependents per employee and selecting those with the maximum count."
+          }
+
+  - context: |
+      {
+        "database_name":"faculty_management_db",
+        "schemas":[
+          {
+            "schema_name":"FACULTY_MANAGEMENT",
+            "tables":[
+              {
+                "table_name":"EMPLOYEE",
+                "columns":[
+                  {"column_name":"Ssn","data_type":"CHAR(9)","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Fname","data_type":"VARCHAR(30)"},
+                  {"column_name":"Lname","data_type":"VARCHAR(30)"}
+                ],
+                "table_constraints":["PRIMARY KEY (Ssn)"]
+              },
+              {
+                "table_name":"PROJECT",
+                "columns":[
+                  {"column_name":"Number","data_type":"INT","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Name","data_type":"VARCHAR(30)"},
+                  {"column_name":"Location","data_type":"VARCHAR(50)"}
+                ],
+                "table_constraints":["PRIMARY KEY (Number)"]
+              },
+              {
+                "table_name":"WORKS_ON",
+                "columns":[
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Project_Number","data_type":"INT","constraints":["FOREIGN KEY (Project_Number) REFERENCES PROJECT(Number)"]},
+                  {"column_name":"Hours","data_type":"NUMERIC(5, 2)"}
+                ],
+                "table_constraints":["PRIMARY KEY (Employee_Ssn, Project_Number)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Project_Number) REFERENCES PROJECT(Number)"]
+              },
+              {
+                "table_name":"CONTROLS",
+                "columns":[
+                  {"column_name":"Department_Number","data_type":"INT","constraints":["FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]},
+                  {"column_name":"Project_Number","data_type":"INT","constraints":["FOREIGN KEY (Project_Number) REFERENCES PROJECT(Number)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Department_Number, Project_Number)","FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)","FOREIGN KEY (Project_Number) REFERENCES PROJECT(Number)"]
+              },
+              {
+                "table_name":"MANAGES",
+                "columns":[
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Department_Number","data_type":"INT","constraints":["FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Employee_Ssn, Department_Number)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]
+              },
+              {
+                "table_name":"WORKS_FOR",
+                "columns":[
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Department_Number","data_type":"INT","constraints":["FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Employee_Ssn, Department_Number)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]
+              }
+            ]
+          }
+        ]
+      }
+    questions_and_answers:
+      - question: |
+          List the projects controlled by departments located in 'Building A'.
+        answer: |
+          {
+            "code": "SELECT p.Name FROM FACULTY_MANAGEMENT.PROJECT p JOIN FACULTY_MANAGEMENT.CONTROLS c ON p.Number = c.Project_Number JOIN FACULTY_MANAGEMENT.DEPARTMENT d ON c.Department_Number = d.Number WHERE d.Locations LIKE '%Building A%';",
+            "explanation": "Lists projects controlled by departments located in 'Building A' by joining PROJECT, CONTROLS, and DEPARTMENT tables and filtering locations."
+          }
+      - question: |
+          Find the total number of projects controlled by each department.
+        answer: |
+          {
+            "code": "SELECT d.Name AS Department, COUNT(c.Project_Number) AS ProjectCount FROM FACULTY_MANAGEMENT.DEPARTMENT d JOIN FACULTY_MANAGEMENT.CONTROLS c ON d.Number = c.Department_Number GROUP BY d.Number, d.Name;",
+            "explanation": "Finds the total number of projects controlled by each department by joining DEPARTMENT and CONTROLS tables and grouping."
+          }
+      - question: |
+          Find the names of departments that control all projects.
+        answer: |
+          {
+            "code": "SELECT d.Name FROM FACULTY_MANAGEMENT.DEPARTMENT d WHERE NOT EXISTS ( SELECT p.Number FROM FACULTY_MANAGEMENT.PROJECT p  EXCEPT SELECT c.Project_Number FROM FACULTY_MANAGEMENT.CONTROLS c WHERE c.Department_Number = d.Number);",
+            "explanation": "Finds departments that control all projects by ensuring there are no projects they do not control."
+          }
+      - question: |
+          List the names of employees who manage a department and work on a project controlled by that department.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.MANAGES m ON e.Ssn = m.Employee_Ssn JOIN FACULTY_MANAGEMENT.WORKS_ON w ON e.Ssn = w.Employee_Ssn JOIN FACULTY_MANAGEMENT.CONTROLS c ON m.Department_Number = c.Department_Number AND w.Project_Number = c.Project_Number;",
+            "explanation": "Lists employees who manage a department and work on a project controlled by that department by joining EMPLOYEE, MANAGES, WORKS_ON, and CONTROLS."
+          }
+      - question: |
+          List the names of employees who work on a project located in 'Chicago'.
+        answer: |
+          {
+            "code": "SELECT DISTINCT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.WORKS_ON w ON e.Ssn = w.Employee_Ssn JOIN FACULTY_MANAGEMENT.PROJECT p ON w.Project_Number = p.Number WHERE p.Location = 'Chicago';",
+            "explanation": "Lists employees who work on a project located in 'Chicago' by joining EMPLOYEE, WORKS_ON, and PROJECT tables and filtering by location."
+          }
+      - question: |
+          List all projects that 'David Brown' works on.
+        answer: |
+          {
+            "code": "SELECT p.Name FROM FACULTY_MANAGEMENT.PROJECT p JOIN FACULTY_MANAGEMENT.WORKS_ON w ON p.Number = w.Project_Number JOIN FACULTY_MANAGEMENT.EMPLOYEE e ON w.Employee_Ssn = e.Ssn WHERE e.Fname = 'David' AND e.Lname = 'Brown';",
+            "explanation": "Lists all projects that 'David Brown' works on by joining PROJECT, WORKS_ON, and EMPLOYEE tables."
+          }
+      - question: |
+          Find employees who do not work on any project.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e WHERE NOT EXISTS (  SELECT 1 FROM FACULTY_MANAGEMENT.WORKS_ON w WHERE e.Ssn = w.Employee_Ssn);",
+            "explanation": "Finds employees who do not work on any project by selecting employees with no matching records in WORKS_ON."
+          }
+      - question: |
+          Find employees who work on exactly the same set of projects as 'David Brown'.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e WHERE NOT EXISTS ( SELECT w.Project_Number FROM FACULTY_MANAGEMENT.WORKS_ON w WHERE w.Employee_Ssn = e.Ssn  EXCEPT  SELECT w2.Project_Number FROM FACULTY_MANAGEMENT.WORKS_ON w2 JOIN FACULTY_MANAGEMENT.EMPLOYEE e2 ON w2.Employee_Ssn = e2.Ssn WHERE e2.Fname = 'David' AND e2.Lname = 'Brown') AND NOT EXISTS ( SELECT w2.Project_Number FROM FACULTY_MANAGEMENT.WORKS_ON w2 JOIN FACULTY_MANAGEMENT.EMPLOYEE e2 ON w2.Employee_Ssn = e2.Ssn WHERE e2.Fname = 'David' AND e2.Lname = 'Brown' EXCEPT SELECT w.Project_Number FROM FACULTY_MANAGEMENT.WORKS_ON w WHERE w.Employee_Ssn = e.Ssn);",
+            "explanation": "Finds employees who work on exactly the same set of projects as 'David Brown' by comparing their project sets."
+          }
+      - question: |
+          Retrieve the names of employees who work on the maximum number of projects.
+        answer: |
+          {
+            "code": "WITH EmployeeProjectCount AS ( SELECT e.Ssn, e.Fname, e.Lname, COUNT(w.Project_Number) AS ProjectCount  FROM FACULTY_MANAGEMENT.EMPLOYEE e  JOIN FACULTY_MANAGEMENT.WORKS_ON w ON e.Ssn = w.Employee_Ssn GROUP BY e.Ssn, e.Fname, e.Lname), MaxCount AS (  SELECT MAX(ProjectCount) AS MaxProjects FROM EmployeeProjectCount) SELECT epc.Fname, epc.Lname FROM EmployeeProjectCount epc, MaxCount mc WHERE epc.ProjectCount = mc.MaxProjects;",
+            "explanation": "Retrieves employees who work on the maximum number of projects by comparing their project counts to the maximum."
+          }
+      - question: |
+          Retrieve the names of employees who are the only ones working on a particular project.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.WORKS_ON w ON e.Ssn = w.Employee_Ssn GROUP BY e.Ssn, e.Fname, e.Lname HAVING COUNT(w.Project_Number) = 1;",
+            "explanation": "Retrieves employees who are the only ones working on a particular project by grouping and counting in WORKS_ON."
+          }
+      - question: |
+          Find the names of employees who work on every project located in 'New York'.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e WHERE NOT EXISTS ( SELECT p.Number  FROM FACULTY_MANAGEMENT.PROJECT p WHERE p.Location = 'New York'  EXCEPT  SELECT w.Project_Number FROM FACULTY_MANAGEMENT.WORKS_ON w   WHERE w.Employee_Ssn = e.Ssn);",
+            "explanation": "Finds employees who work on every project located in 'New York' by ensuring there is no 'New York' project they don't work on."
+          }
+      - question: |
+          List the names of employees who work on more than one project.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.WORKS_ON w ON e.Ssn = w.Employee_Ssn GROUP BY e.Ssn, e.Fname, e.Lname HAVING COUNT(w.Project_Number) > 1;",
+            "explanation": "Lists names of employees who work on more than one project by grouping and counting projects in WORKS_ON."
+          }
+      - question: |
+          Calculate the total number of hours each employee works on all projects.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname, SUM(w.Hours) AS TotalHours FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.WORKS_ON w ON e.Ssn = w.Employee_Ssn GROUP BY e.Ssn, e.Fname, e.Lname;",
+            "explanation": "Calculates the total hours each employee works on all projects by summing Hours in WORKS_ON."
+          }
+  - context: |
+      {
+        "database_name":"faculty_management_db",
+        "schemas":[
+          {
+            "schema_name":"FACULTY_MANAGEMENT",
+            "tables":[
+              {
+                "table_name":"EMPLOYEE",
+                "columns":[
+                  {"column_name":"Ssn","data_type":"CHAR(9)","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Fname","data_type":"VARCHAR(30)"},
+                  {"column_name":"Lname","data_type":"VARCHAR(30)"}
+                ],
+                "table_constraints":["PRIMARY KEY (Ssn)"]
+              },
+              {
+                "table_name":"PROJECT",
+                "columns":[
+                  {"column_name":"Number","data_type":"INT","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Name","data_type":"VARCHAR(30)"},
+                  {"column_name":"Location","data_type":"VARCHAR(50)"}
+                ],
+                "table_constraints":["PRIMARY KEY (Number)"]
+              },
+              {
+                "table_name":"WORKS_ON",
+                "columns":[
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Project_Number","data_type":"INT","constraints":["FOREIGN KEY (Project_Number) REFERENCES PROJECT(Number)"]},
+                  {"column_name":"Hours","data_type":"NUMERIC(5, 2)"}
+                ],
+                "table_constraints":["PRIMARY KEY (Employee_Ssn, Project_Number)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Project_Number) REFERENCES PROJECT(Number)"]
+              },
+              {
+                "table_name":"WORKS_FOR",
+                "columns":[
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Department_Number","data_type":"INT","constraints":["FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Employee_Ssn, Department_Number)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]
+              },
+              {
+                "table_name":"DEPARTMENT",
+                "columns":[
+                  {"column_name":"Number","data_type":"INT","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Name","data_type":"VARCHAR(30)"},
+                  {"column_name":"Locations","data_type":"VARCHAR(100)"}
+                ],
+                "table_constraints":["PRIMARY KEY (Number)"]
+              },
+              {
+                "table_name":"DEPENDENT",
+                "columns":[
+                  {"column_name":"Name","data_type":"VARCHAR(30)","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]}
+                ],
+                "table_constraints":["PRIMARY KEY (Name, Employee_Ssn)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]
+              }
+            ]
+          }
+        ]
+      }
+    questions_and_answers:
+      - question: |
+          List the names of employees who work only on projects located in the same city as their department's location.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.WORKS_ON w ON e.Ssn = w.Employee_Ssn JOIN FACULTY_MANAGEMENT.PROJECT p ON w.Project_Number = p.Number JOIN FACULTY_MANAGEMENT.WORKS_FOR wf ON e.Ssn = wf.Employee_Ssn JOIN FACULTY_MANAGEMENT.DEPARTMENT d ON wf.Department_Number = d.Number WHERE p.Location = d.Locations GROUP BY e.Ssn, e.Fname, e.Lname HAVING COUNT(DISTINCT p.Number) = ( SELECT COUNT(DISTINCT p2.Number)  FROM FACULTY_MANAGEMENT.PROJECT p2  JOIN FACULTY_MANAGEMENT.WORKS_ON w2 ON w2.Project_Number = p2.Number  WHERE w2.Employee_Ssn = e.Ssn);",
+            "explanation": "Lists employees working only on projects in the same city as their department by matching project locations and department locations."
+          }
+      - question: |
+          List the names of employees whose total hours on all projects exceed the total hours of any other employee.
+        answer: |
+          {
+            "code": "WITH EmployeeHours AS ( SELECT e.Ssn, e.Fname, e.Lname, SUM(w.Hours) AS TotalHours FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.WORKS_ON w ON e.Ssn = w.Employee_Ssn GROUP BY e.Ssn, e.Fname, e.Lname), MaxHours AS ( SELECT MAX(TotalHours) AS MaxTotalHours FROM EmployeeHours) SELECT eh.Fname, eh.Lname FROM EmployeeHours eh, MaxHours mh WHERE eh.TotalHours = mh.MaxTotalHours;",
+            "explanation": "Lists employees whose total project hours exceed any other employee by summing hours and selecting those with the maximum total."
+          }
+      - question: |
+          List all pairs of employees who work on exactly the same set of projects (excluding pairs where an employee is paired with themselves).
+        answer: |
+          {
+            "code": "WITH EmployeeProjects AS ( SELECT Employee_Ssn, ARRAY_AGG(Project_Number ORDER BY Project_Number) AS Projects FROM FACULTY_MANAGEMENT.WORKS_ON GROUP BY Employee_Ssn) SELECT e1.Employee_Ssn AS Employee1_Ssn, e2.Employee_Ssn AS Employee2_Ssn FROM EmployeeProjects e1 JOIN EmployeeProjects e2 ON e1.Projects = e2.Projects AND e1.Employee_Ssn < e2.Employee_Ssn JOIN FACULTY_MANAGEMENT.EMPLOYEE emp1 ON e1.Employee_Ssn = emp1.Ssn JOIN FACULTY_MANAGEMENT.EMPLOYEE emp2 ON e2.Employee_Ssn = emp2.Ssn ORDER BY emp1.Lname, emp1.Fname, emp2.Lname, emp2.Fname;",
+            "explanation": "Lists all pairs of employees who work on exactly the same projects by comparing arrays of project numbers."
+          }
+      - question: |
+          Find the names of employees who have worked on projects located in all the cities where 'Carol Williams' has worked on projects.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e WHERE NOT EXISTS ( SELECT p.Location FROM FACULTY_MANAGEMENT.PROJECT p JOIN FACULTY_MANAGEMENT.WORKS_ON w ON p.Number = w.Project_Number  JOIN FACULTY_MANAGEMENT.EMPLOYEE e2 ON w.Employee_Ssn = e2.Ssn WHERE e2.Fname = 'Carol' AND e2.Lname = 'Williams' EXCEPT  SELECT p2.Location  FROM FACULTY_MANAGEMENT.PROJECT p2 JOIN FACULTY_MANAGEMENT.WORKS_ON w2 ON p2.Number = w2.Project_Number WHERE w2.Employee_Ssn = e.Ssn);",
+            "explanation": "Finds employees who have worked on projects in all cities where 'Carol Williams' has worked by comparing project locations."
+          }
+      - question: |
+          Find the names of employees who have worked on projects in every city where the company has a project.
+        answer: |
+          {
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e WHERE NOT EXISTS ( SELECT p.Location FROM FACULTY_MANAGEMENT.PROJECT p  EXCEPT  SELECT DISTINCT p2.Location FROM FACULTY_MANAGEMENT.PROJECT p2 JOIN FACULTY_MANAGEMENT.WORKS_ON w ON p2.Number = w.Project_Number   WHERE w.Employee_Ssn = e.Ssn);",
+            "explanation": "Finds employees who have worked on projects in every city by ensuring there are no project cities they haven't worked in."
+          }
+      - question: |
+          Find the names of employees who have never worked on a project controlled by their own department.
+        answer: |
+          {
+            "code": "SELECT DISTINCT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e JOIN FACULTY_MANAGEMENT.WORKS_FOR wf ON e.Ssn = wf.Employee_Ssn WHERE NOT EXISTS ( SELECT 1 FROM FACULTY_MANAGEMENT.WORKS_ON w JOIN FACULTY_MANAGEMENT.CONTROLS c ON w.Project_Number = c.Project_Number  WHERE w.Employee_Ssn = e.Ssn AND c.Department_Number = wf.Department_Number);",
+            "explanation": "Finds employees who have never worked on a project controlled by their own department by ensuring no such projects exist."
+          }
+
+  document_outline: |
+    This document contains SQL queries for a PostgreSQL database based on the FACULTY_MANAGEMENT schema, focusing on schema-aware queries for text-to-SQL operations.
+
+  document:
+    repo: "https://github.com/kroy01/instructLab_textToSQL_knowledgeBase"
+    commit: "86bec404fec46543b3417ec7de44f01178fb468b"
+    patterns:
+      - "*.md"

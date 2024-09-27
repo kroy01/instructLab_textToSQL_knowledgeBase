@@ -1,10 +1,14 @@
 version: 3
 domain: "SQL for PostgreSQL"
 created_by: "Krishnendu Roy"
-taxonomy: 
+taxonomy:
   category: "knowledge"
-  sub_category: "text_to_sql"
-  topic: "schema_aware_queries"
+  sub_category: "STEM fields"
+  field: "Information Technology"
+  specialization: "Data Science & Artificial Intelligence"
+  area: "Database"
+  topic: "text_to_sql"
+  sub_topic: "schema_aware_queries"
 seed_examples:
   - context: |
       {
@@ -19,7 +23,8 @@ seed_examples:
                   {"column_name":"Ssn","data_type":"CHAR(9)","constraints":["PRIMARY KEY"]},
                   {"column_name":"Fname","data_type":"VARCHAR(30)"},
                   {"column_name":"Lname","data_type":"VARCHAR(30)"},
-                  {"column_name":"Supervisor","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Supervisor) REFERENCES EMPLOYEE(Ssn)"]}
+                  {"column_name":"Supervisor","data_type":"CHAR(9)"
+                  ,"constraints":["FOREIGN KEY (Supervisor) REFERENCES EMPLOYEE(Ssn)"]}
                 ],
                 "table_constraints":["PRIMARY KEY (Ssn)","FOREIGN KEY (Supervisor) REFERENCES EMPLOYEE(Ssn)"]
               },
@@ -27,39 +32,54 @@ seed_examples:
                 "table_name":"DEPENDENT",
                 "columns":[
                   {"column_name":"Name","data_type":"VARCHAR(30)","constraints":["PRIMARY KEY"]},
-                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)"
+                  ,"constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
                   {"column_name":"Relationship","data_type":"VARCHAR(20)"}
                 ],
-                "table_constraints":["PRIMARY KEY (Name, Employee_Ssn)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]
+                "table_constraints":["PRIMARY KEY (Name, Employee_Ssn)"
+                ,"FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]
               },
               {
                 "table_name":"SUPERVISION",
                 "columns":[
-                  {"column_name":"Supervisor","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Supervisor) REFERENCES EMPLOYEE(Ssn)"]},
-                  {"column_name":"Supervisee","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Supervisee) REFERENCES EMPLOYEE(Ssn)"]}
+                  {"column_name":"Supervisor","data_type":"CHAR(9)"
+                  ,"constraints":["FOREIGN KEY (Supervisor) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Supervisee","data_type":"CHAR(9)"
+                  ,"constraints":["FOREIGN KEY (Supervisee) REFERENCES EMPLOYEE(Ssn)"]}
                 ],
-                "table_constraints":["PRIMARY KEY (Supervisor, Supervisee)","FOREIGN KEY (Supervisor) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Supervisee) REFERENCES EMPLOYEE(Ssn)"]
+                "table_constraints":["PRIMARY KEY (Supervisor, Supervisee)"
+                ,"FOREIGN KEY (Supervisor) REFERENCES EMPLOYEE(Ssn)"
+                ,"FOREIGN KEY (Supervisee) REFERENCES EMPLOYEE(Ssn)"]
               },
               {
                 "table_name":"WORKS_ON",
                 "columns":[
-                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
-                  {"column_name":"Project_Number","data_type":"INT","constraints":["FOREIGN KEY (Project_Number) REFERENCES PROJECT(Number)"]}
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)"
+                  ,"constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Project_Number","data_type":"INT"
+                  ,"constraints":["FOREIGN KEY (Project_Number) REFERENCES PROJECT(Number)"]}
                 ],
-                "table_constraints":["PRIMARY KEY (Employee_Ssn, Project_Number)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Project_Number) REFERENCES PROJECT(Number)"]
+                "table_constraints":["PRIMARY KEY (Employee_Ssn, Project_Number)"
+                ,"FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"
+                ,"FOREIGN KEY (Project_Number) REFERENCES PROJECT(Number)"]
               },
               {
                 "table_name":"WORKS_FOR",
                 "columns":[
-                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)","constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
-                  {"column_name":"Department_Number","data_type":"INT","constraints":["FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]}
+                  {"column_name":"Employee_Ssn","data_type":"CHAR(9)"
+                  ,"constraints":["FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"]},
+                  {"column_name":"Department_Number","data_type":"INT"
+                  ,"constraints":["FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]}
                 ],
-                "table_constraints":["PRIMARY KEY (Employee_Ssn, Department_Number)","FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)","FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]
+                "table_constraints":["PRIMARY KEY (Employee_Ssn, Department_Number)"
+                ,"FOREIGN KEY (Employee_Ssn) REFERENCES EMPLOYEE(Ssn)"
+                ,"FOREIGN KEY (Department_Number) REFERENCES DEPARTMENT(Number)"]
               },
               {
                 "table_name":"DEPARTMENT",
                 "columns":[
-                  {"column_name":"Number","data_type":"INT","constraints":["PRIMARY KEY"]},
+                  {"column_name":"Number","data_type":"INT"
+                  ,"constraints":["PRIMARY KEY"]},
                   {"column_name":"Name","data_type":"VARCHAR(30)"}
                 ],
                 "table_constraints":["PRIMARY KEY (Number)"]
@@ -80,8 +100,12 @@ seed_examples:
           List the names of employees who have at least one dependent.
         answer: |
           {
-            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e WHERE EXISTS ( SELECT 1 FROM FACULTY_MANAGEMENT.DEPENDENT d WHERE d.Employee_Ssn = e.Ssn );",
-            "explanation": "Lists names of employees who have at least one dependent by checking for related entries in DEPENDENT."
+            "code": "SELECT e.Fname, e.Lname FROM FACULTY_MANAGEMENT.EMPLOYEE e \
+             WHERE EXISTS \
+             ( SELECT 1 FROM FACULTY_MANAGEMENT.DEPENDENT d \
+             WHERE d.Employee_Ssn = e.Ssn );",
+            "explanation": "Lists names of employees who have at least \
+            one dependent by checking for related entries in DEPENDENT."
           }
       - question: |
           Retrieve the names of employees who have both a son and a daughter as dependents.
@@ -857,11 +881,11 @@ seed_examples:
             "explanation": "Finds employees who have never worked on a project controlled by their own department by ensuring no such projects exist."
           }
 
-  document_outline: |
-    This document contains SQL queries for a PostgreSQL database based on the FACULTY_MANAGEMENT schema, focusing on schema-aware queries for text-to-SQL operations.
+document_outline: |
+  This document contains SQL queries for a PostgreSQL database based on the FACULTY_MANAGEMENT schema, focusing on schema-aware queries for text-to-SQL operations.
 
-  document:
-    repo: "https://github.com/kroy01/instructLab_textToSQL_knowledgeBase"
-    commit: "86bec404fec46543b3417ec7de44f01178fb468b"
-    patterns:
-      - "*.md"
+document:
+  repo: "https://github.com/kroy01/instructLab_textToSQL_knowledgeBase"
+  commit: "86bec404fec46543b3417ec7de44f01178fb468b"
+  patterns:
+    - "*.md"

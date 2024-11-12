@@ -1,5 +1,192 @@
 # Faculty Management Database Schema
 
+## DATABASE DESCRIPTION
+## PostgreSQL Database: `faculty_management_db`
+
+The **PostgreSQL database** named `faculty_management_db` is a robust and comprehensive database schema designed to manage and organize the faculty and administrative information of an institution. Below is a detailed description of its structure and components, including schemas, tables, and relationships.
+
+---
+
+### Schema Overview: `FACULTY_MANAGEMENT`
+
+This schema serves as the central framework of the `faculty_management_db`, housing all the tables necessary to manage employee information, department details, projects, and their interrelations. It emphasizes data consistency, integrity, and adherence to business rules via well-defined constraints.
+
+---
+
+## Tables and Their Structure
+
+#### 1. `EMPLOYEE` Table
+
+The `EMPLOYEE` table is the backbone of the schema, containing critical details about employees.
+
+- **Columns:**
+  - `Ssn` (`CHAR(9)`): A unique identifier for employees; serves as the primary key.
+  - `Fname` (`VARCHAR(30)`): First name of the employee.
+  - `Minit` (`CHAR(1)`): Middle initial of the employee.
+  - `Lname` (`VARCHAR(30)`): Last name of the employee.
+  - `Bdate` (`DATE`): Birthdate of the employee.
+  - `Address` (`VARCHAR(50)`): Residential address.
+  - `Salary` (`NUMERIC(10, 2)`): Salary of the employee.
+  - `Sex` (`CHAR(1)`): Gender of the employee.
+  - `Supervisor` (`CHAR(9)`): SSN of the supervising employee, a foreign key referencing `EMPLOYEE(Ssn)`.
+
+- **Constraints:**
+  - Primary Key: `Ssn`.
+  - Foreign Key: `Supervisor` references `EMPLOYEE(Ssn)`.
+
+---
+
+#### 2. `DEPARTMENT` Table
+
+The `DEPARTMENT` table contains details about the various departments within the institution.
+
+- **Columns:**
+  - `Number` (`INT`): Unique identifier for departments; serves as the primary key.
+  - `Name` (`VARCHAR(30)`): Name of the department.
+  - `Locations` (`VARCHAR(100)`): Locations where the department operates.
+
+- **Constraints:**
+  - Primary Key: `Number`.
+
+---
+
+#### 3. `PROJECT` Table
+
+The `PROJECT` table tracks various projects being undertaken by the departments.
+
+- **Columns:**
+  - `Number` (`INT`): Unique identifier for projects; serves as the primary key.
+  - `Name` (`VARCHAR(30)`): Name of the project.
+  - `Location` (`VARCHAR(50)`): Location where the project is executed.
+
+- **Constraints:**
+  - Primary Key: `Number`.
+
+---
+
+#### 4. `DEPENDENT` Table
+
+This table stores information about the dependents of employees.
+
+- **Columns:**
+  - `Name` (`VARCHAR(30)`): Name of the dependent; part of the primary key.
+  - `Employee_Ssn` (`CHAR(9)`): SSN of the employee; part of the primary key and foreign key referencing `EMPLOYEE(Ssn)`.
+  - `Sex` (`CHAR(1)`): Gender of the dependent.
+  - `Birth_date` (`DATE`): Birthdate of the dependent.
+  - `Relationship` (`VARCHAR(20)`): Relationship to the employee.
+
+- **Constraints:**
+  - Primary Key: `Name, Employee_Ssn`.
+  - Foreign Key: `Employee_Ssn` references `EMPLOYEE(Ssn)`.
+
+---
+
+#### 5. `SUPERVISION` Table
+
+This table maps supervisory relationships between employees.
+
+- **Columns:**
+  - `Supervisor` (`CHAR(9)`): SSN of the supervisor; foreign key referencing `EMPLOYEE(Ssn)`.
+  - `Supervisee` (`CHAR(9)`): SSN of the supervisee; foreign key referencing `EMPLOYEE(Ssn)`.
+
+- **Constraints:**
+  - Primary Key: `Supervisor, Supervisee`.
+  - Foreign Keys: `Supervisor` and `Supervisee` reference `EMPLOYEE(Ssn)`.
+
+---
+
+#### 6. `WORKS_ON` Table
+
+The `WORKS_ON` table links employees to the projects they are working on.
+
+- **Columns:**
+  - `Employee_Ssn` (`CHAR(9)`): SSN of the employee; foreign key referencing `EMPLOYEE(Ssn)`.
+  - `Project_Number` (`INT`): Project number; foreign key referencing `PROJECT(Number)`.
+  - `Hours` (`NUMERIC(5, 2)`): Number of hours worked on the project.
+
+- **Constraints:**
+  - Primary Key: `Employee_Ssn, Project_Number`.
+  - Foreign Keys: `Employee_Ssn` references `EMPLOYEE(Ssn)`, `Project_Number` references `PROJECT(Number)`.
+
+---
+
+#### 7. `MANAGES` Table
+
+This table records managerial assignments to departments.
+
+- **Columns:**
+  - `Employee_Ssn` (`CHAR(9)`): SSN of the managing employee; foreign key referencing `EMPLOYEE(Ssn)`.
+  - `Department_Number` (`INT`): Department number; foreign key referencing `DEPARTMENT(Number)`.
+  - `Start_date` (`DATE`): Start date of the managerial role.
+
+- **Constraints:**
+  - Primary Key: `Employee_Ssn, Department_Number`.
+  - Foreign Keys: `Employee_Ssn` references `EMPLOYEE(Ssn)`, `Department_Number` references `DEPARTMENT(Number)`.
+
+---
+
+#### 8. `WORKS_FOR` Table
+
+This table tracks departmental affiliations of employees.
+
+- **Columns:**
+  - `Employee_Ssn` (`CHAR(9)`): SSN of the employee; foreign key referencing `EMPLOYEE(Ssn)`.
+  - `Department_Number` (`INT`): Department number; foreign key referencing `DEPARTMENT(Number)`.
+  - `Start_date` (`DATE`): Start date of the association.
+
+- **Constraints:**
+  - Primary Key: `Employee_Ssn, Department_Number`.
+  - Foreign Keys: `Employee_Ssn` references `EMPLOYEE(Ssn)`, `Department_Number` references `DEPARTMENT(Number)`.
+
+---
+
+#### 9. `DEPENDENTS_OF` Table
+
+This table maps dependents to their respective employees.
+
+- **Columns:**
+  - `Employee_Ssn` (`CHAR(9)`): SSN of the employee; foreign key referencing `DEPENDENT(Employee_Ssn)`.
+  - `Dependent_Name` (`VARCHAR(30)`): Name of the dependent; foreign key referencing `DEPENDENT(Name)`.
+
+- **Constraints:**
+  - Primary Key: `Employee_Ssn, Dependent_Name`.
+  - Foreign Keys: Composite key referencing `DEPENDENT(Employee_Ssn, Name)`.
+
+---
+
+#### 10. `CONTROLS` Table
+
+This table establishes control relationships between departments and projects.
+
+- **Columns:**
+  - `Department_Number` (`INT`): Department number; foreign key referencing `DEPARTMENT(Number)`.
+  - `Project_Number` (`INT`): Project number; foreign key referencing `PROJECT(Number)`.
+
+- **Constraints:**
+  - Primary Key: `Department_Number, Project_Number`.
+  - Foreign Keys: `Department_Number` references `DEPARTMENT(Number)`, `Project_Number` references `PROJECT(Number)`.
+
+---
+
+### Relationships and Data Integrity
+
+1. **Hierarchy:** The schema emphasizes hierarchy through relationships like supervision (`SUPERVISION`) and management (`MANAGES`).
+2. **Department-Project Association:** Departments control projects via the `CONTROLS` table.
+3. **Employee Associations:** Employees are linked to departments, projects, and dependents through respective tables.
+4. **Self-referential Integrity:** The `EMPLOYEE` table's `Supervisor` column maintains a self-referential foreign key, ensuring valid hierarchical relationships.
+
+---
+
+### Use Cases
+
+- **Employee Management:** Track employee details, including personal and employment-related data.
+- **Project Assignments:** Allocate employees to projects and monitor their contributions.
+- **Departmental Oversight:** Manage departments and their locations, along with managerial responsibilities.
+- **Dependents Tracking:** Maintain information about employees' dependents.
+- **Control Structures:** Map interrelations between departments and projects to ensure organizational accountability.
+
+This schema provides a comprehensive framework for efficiently managing faculty-related data while ensuring data integrity and consistency through well-defined constraints and relationships.
+
 ## METADATA
 ```json
 {

@@ -886,6 +886,6 @@ document_outline: |
 
 document:
   repo: "https://github.com/kroy01/instructLab_textToSQL_knowledgeBase"
-  commit: "86bec404fec46543b3417ec7de44f01178fb468b"
+  commit: "98c36f0720e0446b569095a423b7c579246f52bd"
   patterns:
     - "*.md"
